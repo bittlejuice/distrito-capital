@@ -1,0 +1,249 @@
+---
+title: "Distrito Capital"
+author: "Beatriz Valdez"
+date: "30 de septiembre de 2016"
+output:
+   html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+# Poblacion. Caracteristicas
+
+Subo los paquetes necesarios para subir la data, en este caso especificamente hojas de calculos. Necesito, entonces, el paquete **readxl**
+
+
+```{r, paquetes}
+require(readr)
+require(readxl)
+```
+
+```{r data, message=FALSE, warning=FALSE}
+
+# evolucion de la poblacion distrito capital
+# salto las primeras ocho lineas con 'skip'
+evolucion<- read_excel("d:/clasesInsumos/clases2016I/dtoCapital/Poblacion3.xls",
+                         skip = 9)
+
+evolucionIntercensal<- read_excel("d:/clasesInsumos/clases2016I/dtoCapital/Poblacion1.xls",
+                                  skip = 11
+                                  )
+```
+
+Exploro que tengo en el marco de datos
+
+```{r exploraciondata}
+head(evolucion)
+head(evolucionIntercensal)
+
+```
+Me doy cuenta de que debo limpiar la data antes de iniciar las exploraciones:
+
+* eliminar filas no deseadas (las que estan despues de la fila 6)
+* darles, nuevamente, nombre a las variables
+* verificar el tipo de variable que tengo en el marco de datos
+* eliminar simbolos o caracteres en las categorias que podrian impedir un despliegue correcto del tipo de variables
+
+Todo ese procedimiento es parte de lo que se conoce como **pre-procesar la data**
+
+## Pre-procesamiento de la data
+
+Quito las filas que no necesito para mi analisis
+
+```{r limpiezaFilas}
+#  elimino filas no deseadas, filas 7 en adelante
+evolucion<- evolucion[1:6,]
+
+```
+
+Renombro las columnas, estos es, las variables
+```{r limpiezaNombres}
+# coloco nombres  de las variables
+names(evolucion)<-c("censo", "pob.total", 
+                    "variacion", "porVar", 
+                    "cre.geom", "porcentaje_deltotal")
+
+```
+
+Verifico que tipo de variables tiene el marco de datos. En R las variables que nos interesan para el análisis que estamos haciendo pueden ser de tipo:
+
+* numericas (numeric) lo que conocemos comunmente como variables continuas
+* enteros (intger), lo que denominamos comunmente variables discretas
+* factor, generalmente variables ordinales
+* carecter (character), corresponde a cadena de textos. Generalmente este es el tipo de variables que deseamos para variables nominales
+* fecha (date)
+
+```{r limpiezaTipoVariable}
+# verifico tipo de variables
+sapply(evolucion, class)
+```
+
+Algunas variables que se nos ofrecen entre comillas suelen interpretarse como de tipo caracter. Eso se debe a que el el contenido de alguna de las filas hay algun simboloque no es coherente con el resto de los datos. En esos casos R lleva toda la columna a caracter. Para hacer esta limpieza, es necesario eliminar el simbolo que esta causando el problema
+
+```{r limpiezaGsub}
+# elimino a/
+evolucion$censo<-gsub("a/", "", evolucion$censo)
+evolucion$censo
+```
+
+Todavia queda algun espacio en la categoria anterior. Si lo dejo, R continuara mostrando el contenido de la variable como de tipo caracter. Para eliminar este espacio hare uso del paquete **stringr**
+
+```{r limpiezaStringr}
+# cargo el paquete stringr 
+require(stringr)
+# elimino el espacio adicional
+str_trim(evolucion$censo)
+# verifico de nuevo el tipo de de variable
+sapply(evolucion, class)
+
+#convierto en numerica
+evolucion$censo<-as.numeric(evolucion$censo)
+```
+
+Limpio ahora el segundo marco de datos. Aqui voy a crear, a partir del marco de datos que subi, otros en los que separo la evolucion de los grupos de edades totales, y luego segun sexo
+
+```{r limpiezaPoblacionI}
+
+# creo el marco de datos con la informacion de los grupos de edades y poblaciontotal
+evolucion_total <- evolucionIntercensal[1:16,]
+
+# les doy nombre a las variables
+names(evolucion_total)<-c("grupos", "1981", "1990", "2001", "2011")
+
+evolucion_hombres <- evolucionIntercensal[20:35,]
+names(evolucion_hombres)<-c("grupos", "1981", "1990", "2001", "2011")
+evolucion_hombres$concepto <-rep("hombre", 16)
+
+# creos los marcos de nombres para los grupos de edades segun sexo
+evolucion_mujeres <- evolucionIntercensal[39:54,]
+names(evolucion_mujeres)[1:5]<-c("grupos", "1981", "1990", "2001", "2011")
+evolucion_mujeres$concepto <-rep("mujer", 16)
+```
+
+Voy a unir los dos marcos relacionados con los grupos de edad segun sexo para facilitar el calculo de la tasa de variacion
+
+```{r unirMarcos}
+#uno los marcos de datos segun sexo
+evolucionSexos <-rbind(evolucion_hombres, evolucion_mujeres)
+
+```
+
+## Crear indicadores
+
+Ahora tengo la data  como la deseo para hacer los diferentes analisis. Ahora debo crear indicadores que me faciliten el analisis e interpretacion de la data, asi como el formularme algunas preguntas de cara al analisis prospectivo Por el tipo de datos que tengo, observo que el indicador mas apropiado es la tasa de variacion. Las creo.
+
+```{r tasaVariacion}
+
+# calculo tasas de variacion
+
+
+#1990-1981
+evolucionSexos$var9081<-round((evolucionSexos[,3]-evolucionSexos[,2])/evolucionSexos[,2]*100 ,2)
+
+# 2001-1990
+evolucionSexos$var0190<-round((evolucionSexos[,4]-evolucionSexos[,3])/evolucionSexos[,2]*100 ,2)
+
+# 211-2001
+evolucionSexos$var1101<-round((evolucionSexos[,5]-evolucionSexos[,4])/evolucionSexos[,4]*100 ,2)
+
+# 2011-1981
+evolucionSexos$var11_81<-round((evolucionSexos[,5]-evolucionSexos[,2])/evolucionSexos[,2]*100 ,2)
+
+
+# Poblacion total 2011-1981
+evolucion_total$var11_81<-round((evolucion_total[,5]-evolucion_total[,2])/evolucion_total[,2]*100 ,2)
+
+
+```
+
+Despues de hacer las tasas, procedo, entonces, a explorar la data.
+
+##  Analisis exploratorio
+
+La pregunta inicial que me surge, y dado que las tasas de variacion me muestran como ha evolucionado una variable dada en un lapso determinado, me pregunto como se ha comportado la poblacion del Distrito Capital, total y, luego segun grupos de edades entre los censos del 90, 2001, y 2011. En particular me pregunto si ha habido crecimientos o decrecimientos importantes en alguno de esos grupo
+
+```{r crecimiento}
+
+par(mfrow=c(1, 2))
+plot(evolucion$porVar~ evolucion$censo, type="l",
+    las=2)
+plot(evolucion$porcentaje_deltotal~ evolucion$censo, 
+   type="l", las=2)
+
+```
+De acuerdo con los graficos, la poblacion del Distrito Capital ha disminuido entre los censos del 90 y el 2001. Pero luego, se observa, ha comenzado a crecer nuevamente, entre 2001 y 2011. Veamos el comportamiento segun grupos de edad
+
+
+```{r crecimientoIntercensal}
+barplot(as.matrix(evolucion_total$var11_81), 
+        beside = T, names.arg = evolucion_total$grupos, 
+        las=2, ylim=c(-33,200))
+
+```
+Se nota que ha habido un decrecimiento en los grupos de edades menores a 15 años, pero se han incrementado los grupos de edades mayores a 50 años en el lapso analizado. Quiero observar este comportamiento de acuerdo con el sexo. 
+
+Para diferenciar los grupos de edades segun sexo, y dado que estan ubicados en un mismo marco de datos, voy a crear un vector con colores. Para ello usare la funcion **ifelse** con la que le digo a R que de acuerdo con un criterio especifico tome una decision. En este caso, le pedire que 'mire' la variable *concepto* y si ve que la categoria es igual a "hombre" genere el codigo correspondiente al color azul, en caso contrario, entonces, que genere el codigo correspondiente al color azul. Esos colores los usare luego para diferenciar las barras
+
+
+```{r crecimientoSexo}
+# creo el vector de colores
+evolucionSexos$colores<-ifelse(
+        evolucionSexos$concepto == "hombre","blue","pink")
+
+
+barplot(as.matrix(evolucionSexos$var11_81), 
+    beside = T, names.arg = evolucionSexos$grupos, 
+    las=2, ylim=c(-33,200),
+    col=evolucionSexos$colores,
+    border="white")
+grid()
+
+```
+
+Los grupos de edades menores a 15 años se han reducido por igual en hombres y mujeres. Sin embargo, la variación ha sido mayor en los hombres. En la mayoria de los grupos de edad masculinos ha habido un incremento mayor que en  los grupos de edades de las mujeres. Examino cada grupo de edad por año, para captar mejor lo que nos dice el grafico
+
+```{r examenAnios}
+
+Variaciones <-as.data.frame(evolucionSexos[,c(1,6:10)])    
+
+# inspecciono el valor minimo y maximo de cada lapso para ajustar el eje y de los graficos de barrar que hare luego
+range(Variaciones[,3])
+range(Variaciones[,4])
+range(Variaciones[,5])
+```
+
+Creo los graficos de barra
+
+```{r resumenes90}
+# variacion en 1990 respecto a 1981
+barplot(as.matrix(Variaciones[,3]), 
+    beside = TRUE, names.arg = Variaciones[,1], 
+    las=2, ylim=c(-15,45),
+    col=evolucionSexos$colores,
+    border="white")
+```
+```{r resumenes2001}
+# variacion en 2001 respecto a 1990
+barplot(as.matrix(Variaciones[,4]), 
+    beside = TRUE, names.arg = Variaciones[,1], 
+    las=2, ylim=c(-20,90),
+    col=evolucionSexos$colores,
+    border="white")
+```
+
+```{r resumenes2011}
+# variacion 2011 con respecto a 2001
+barplot(as.matrix(Variaciones[,5]), 
+    beside = TRUE, names.arg = Variaciones[,1], 
+    las=2, ylim=c(-20,60),
+    col=evolucionSexos$colores,
+    border="white")
+
+```
+
