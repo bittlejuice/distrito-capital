@@ -1,0 +1,561 @@
+---
+title: "Distrito Capital. Dinamica. Exploraciones"
+output: html_notebook
+---
+
+
+```{r}
+load("D:/clasesInsumos/clases2016I/dtoCapital/dinamicaDs.RData")
+
+```
+
+
+
+```{r}
+head(dinamica1Totales)
+```
+
+```{r}
+# creo una funcion propia para calcular la tas de variacion
+ 
+variacion1<-function(x, y){
+# obtener la tasa de crecimieto  o decrecimiento de una variabe
+# x: anio mas reciente
+# y: anio inicial
+# formula (x-y)/y *100
+# aplicacion:  variacion1(empleo1976, empleo1965)
+        diferencia <- x-y
+        cociente <-diferencia/y
+        tasa <- round(cociente*100, 2)
+        return(tasa)
+}
+```
+
+Si la funcion ha sido programada correctamente el resultado debe ser
+```{r}
+# pruebo la funcion
+(dinamica1Totales$`2012`-dinamica1Totales$`2001`)/dinamica1Totales$`2001`*100
+```
+
+Pruebo la funcion
+
+```{r}
+variacion1(dinamica1Totales$`2012`, dinamica1Totales$`2001`)
+```
+
+Creo un marco de datos para revisar la variacion en los nacimientos en las distintas parroquias del Distrito Capital, segúnresdiencia ahbitual de la madre.
+
+Recordando la fórmula
+
+$$variacion\ =\ \frac{\left(valor\ reciente\ -\ valor\ inicial\right)}{valor\ inicial}\cdot100\ $$
+
+```{r}
+variacion1(dinamica1Totales$`2012`, dinamica1Totales$`2001`)
+
+# analizo los nacimientos vivos por parroquia en 
+# distrito capital entre 2001 y 2012
+
+nacimiento_parroquia <- data.frame(
+        parroquia = dinamica1Totales$parroquia,
+        variacion = variacion1(dinamica1Totales$`2012`, 
+                               dinamica1Totales$`2001`)
+)
+
+# exploro mi marco de datos
+nacimiento_parroquia
+``` 
+
+
+```{r}
+barplot(nacimiento_parroquia[,2],
+        names.arg = nacimiento_parroquia[,1],
+        las=2)
+```
+
+El número de nacimientos ha decrecido en las parroquia Altagracia, Catedral, El Valle, Macarao, San Agustín y 23 de Enero. Se ha incrementado el resto de las parroquias especialmente en San Bernardino, El Junquito y Santa Rosalía. 
+
+En general, el número de nacimientos ha disminuidos en las parroquias que se formaron primero en el Distrito Capital, bien a finales del siglo XIX o a principios del siglo XX: Catedral, Altagracia, por ejemplo. Ese fenómenos posiblemente se debe al hecho de que los urbanismos se han desarrollado fuera de estos lugares y quienes habitan allí suelen ser personas de mayor edad. Algunas de las parroquias históricas como Santa teresa, San Bernardino y Santa Rosalía, muestra un incremento en el número de nacimientos, tal vez como resultado de las edificaciones nuevas construídas allí en el marco de la Misión Vivienda.
+
+Para tratar de corroborar esto, sería necesario examinar la pobación intercensal en estas parroquias. Dado que estos datos son producto de, posiblmente, la interpolación del número de nacimientos entre los censos del 2001 y el censod de 2011.
+
+
+Examino la evolución del índice de masculinidad. Primero exploro el marco de datos que cree sobre los nacimientos vivos en Distrito Capital, según la parroquia de residencia de la madre
+```{r}
+head(dinamica1Sexo)
+```
+
+Construyo una función que me permita analizar rápidamente el índice de masculinidad. La fórmula es
+
+$$masculinidad=100\cdot\frac{Hombres}{Mujeres}$$
+
+```{r}
+masculinidad <-function(hombres, mujeres){
+# obtener el indice de masculinidad
+# hombres: vector con el numero de hombres
+# mujeres: vector con el numero de mujeres
+# formula: hombres/mujeres * 100
+# aplicacion:  masculinidad(hombres_en, mujeres_en)
+        indices <- round(100*hombres/mujeres,2)
+        return(indices)
+        
+}
+```
+
+Pruebo la funcion
+
+```{r}
+# sin aplicar la funcion
+dinamica1Sexo$H2001/dinamica1Sexo$M2001 *100
+
+# con la funcion masculinidad
+masculinidad(dinamica1Sexo[,2], dinamica1Sexo[,3])
+
+```
+
+Interpretación del índice
+
+* el valor es igual a 1 si hay igual cantidad de hombres que mujeres
+* el valor será mayor a 1 si hay más hombres que mujeres
+* el valor será menor a 1 si hay menos hombres que mujeres
+        
+```{r}
+indice.masculinidad <-data.frame(
+        parroquias = dinamica1Sexo$parroquia, 
+        masculinidad2001= masculinidad(dinamica1Sexo[,2],
+                                       dinamica1Sexo[,3]),
+        masculinidad2011 = masculinidad(dinamica1Sexo[,24], dinamica1Sexo[,25]))
+
+indice.masculinidad$variacion <-
+        variacion1(indice.masculinidad[,3], 
+                   indice.masculinidad[,2])
+```
+
+Salvo en seis parroquias, en todas se regitra una disminución del índice de masculinidad
+
+```{r}
+barplot(indice.masculinidad[,4],
+        names.arg =indice.masculinidad[,1],
+        las=2)
+```
+
+Puedo contrastar el comportamiento de los nacidos vivos según el lugar de residencia de la madre y el indice de masculinidad
+
+
+```{r}
+par(mfrow=c(1,2))
+barplot(nacimiento_parroquia[,2],
+        names.arg = nacimiento_parroquia[,1],
+        las=2)
+
+barplot(indice.masculinidad[,4],
+        names.arg =indice.masculinidad[,1],
+        las=2)
+
+```
+
+En muchas de las parroquias en las que se ha incrementado el número de nacidos vivos, ha decrecido el índice de masculinidad. Menos hombres, pero más nacimientos vivos. Muchos factores podrían explicar esto: migraciones, la violencia, entre otras posibilidades. Lo que sí parece sugerir ambos hecho es la presencia de más mujeres solas con niños.
+
+Creo ahora una función para poder analizar los nacidos vivos según grupos de edades de la madres y parroquia de residencia habitual de la madre. 
+
+En primer lugar analizo cuál es el grupo de edad más frecuentes de las madres
+
+```{r}
+
+barplot(nacidosVivos$total, names.arg = nacidosVivos$edades, 
+        las=2)
+```
+
+Las mujeres dan a luz generalmente entre los 20-24 años. Veamos ahora qué parroquias tienen una edad menor o mayor a esta. Voy a crear una función que me permita calcular porcentaje. En realidad es una función no muy necesaria, pero nos permite seguir practicando el procedimiento para crear funciones
+
+```{r}
+porcentaje <- function(marco, divisor, dividiendo){
+# dado un marco de datos, calcula los porcentajes
+# marco: vector o marco de datos que se desea transformar
+# divisor: vector o columnas a las que se desea obtener el porcentaje
+# dividiendo: vector o columna por la que se desea dividir para obener el porcentaje
+# aplicacion:  porcentaje(marco, 3:10, 2)        
+        df <- as.data.frame(marco)
+        proporcion <- df[,divisor]/df[, dividiendo]
+        porcentaje <- round(proporcion*100, 1)
+        return(porcentaje)
+}
+
+```
+
+Pruebo y aplico
+
+```{r}
+nacidosVivos$altagracia/nacidosVivos$total*100
+nacidosVivos$antimano/nacidosVivos$total*100
+
+porcentaje(nacidosVivos, 3:24, 2)
+```
+
+DE cada 100 nacidos en madres menores de 15 años, 14 nacen en Antímano, y 24 en la parroquia Sucre; de cada 100 nacidos en grupos de edades entre 15 y 19 años, 10 nacen en Antìmano y 23 en la parroquia Sucre. Para facilitar la visualización empleo el paquete lattice. Porque voya a crear lo que se llama 'small.multiples'
+En este marco de datos, debemos recordar, hay solo tres variables: grupos de edades, parroquia y porcentaje. Para crear un small.multiple con lattice debo asegurarme que el marco de datos refleje su estructura real.
+
+```{r}
+require(lattice)
+# Creo un marco de datos con los porcentajes
+nv <- porcentaje(nacidosVivos, 3:24, 2)
+
+head(nv)
+
+```
+
+Debo crear ahora una columna con la variable grupos de edad
+
+```{r}
+# necesito colocar la variable parroquia en una
+# sola columna,  uso la funcion stack
+nvS <-stack(nv)
+head(nvS)
+
+```
+
+Debo agregar ahora los grupos de edad. Usaré la función repetir: **rep()**
+
+```{r}
+# ejemplo funcion repetir. Repito: c("A","B"), dos veces
+rep(c("A","B"),2)
+# debo repetir los nombres de los grupos  de edades, 9 veces
+# en 10 series y agregarlo al marco nvS
+
+nvS$grupos <-rep(nacidosVivos$edades, 9, 10)
+#abrevio los nombres de las parroquias
+nvS$ind <-abbreviate(nvS$ind)
+head(nvS)
+
+```
+
+Repeti las categorias de la variable edades del marco de datos nacidosvivos. Pues hay 9 categorias. y hago 10 series porque si colocamos **table(nvS$ind** veremos que hay 10 series.
+
+Tengo los ingredientes para hacer el small.muliple
+
+```{r}
+dotplot(values~ind | grupos, data=nvS)
+```
+
+Para que los niveles de la variable grupos nos quede como debe ser, debemos decirle a R que grupos es una variable de tipo ordinal. En R eso se donomina factor adicionalmente, podemos abreviar los nombres de las parroquias: 
+
+```{r}
+dotplot(values~ind | as.factor(grupos), data=nvS,
+        scales= list(x= list(rot=90)))
+```
+
+En Santa Teresa se producen los mayores porcentajes de nacidos vivos en madres mayores de 35 años.  del Distrto Capital resulta más fácil de interpretar, podemos crear un small.muliple de gráficos de barra. Adicionalmente, podemos reordenar los grupos de edades para tener una mejor compresion de la distribución de las variables en en el Distrito Capital
+
+```{r}
+nvS$grupos <-factor(nvS$grupos, order=TRUE,levels=c("Menos de 15",
+                                                    "15 -19",
+                                                    "20-24",
+                                                    "25-29",
+                                                    "30 -34",
+                                                    "35 -39", 
+                                                    "40 -44",
+                                                    "45 -49",
+                                                    "50 años y más",
+                                                  "No-declarado"))
+
+```
+
+```{r, fig.height=10, fig.width=10}
+barchart(values~ind | as.factor(grupos), data=nvS,
+          scales= list(x= list(rot=90)))
+```
+
+Analizo el predominio de adolescentes en las diferentes parroquias
+
+```{r}
+
+# me desago de la primera fila porque no aporta mucha informacion
+md <-nVivosgrupos[2:4,]
+
+# creo un data.frame con los porcentajes
+mujeres.Distr<-porcentaje(md, 3:24, 2)
+# apilo el data.frme
+mDs <-stack(mujeres.Distr)
+# agrego la informacion sobre los grupos
+mDs$grupos<-rep(md$edades, 2,3)
+```
+
+Visualizo la informacion
+```{r, fig.height=10, fig.width=10}
+barchart(values~ind | as.factor(grupos), data=mDs,
+          scales= list(x= list(rot=90)))
+```
+
+Como es de esperarse, hay muchas mas adolescentes en las parroquias Sucre y Antimano
+
+Analizo la distribución de los nacidos vivos por sexo, según grupo de edades de la madre
+
+
+
+```{r}
+
+# creo un data.frame con los porcentajes
+mdH<-porcentaje(nvhombres, 3:24, 2)
+# apilo el data.frme
+mDHp <-stack(mdH)
+# agrego la informacion sobre los grupos
+mDHp$grupos <-rep(nvhombres$edades, 9, 10)
+
+# mismo procedimiento con las mujeres
+
+# creo un data.frame con los porcentajes
+mdM<-porcentaje(nvMujeres, 3:24, 2)
+# apilo el data.frme
+mDMp <-stack(mdM)
+# agrego la informacion sobre los grupos
+mDMp$grupos <-rep(nvMujeres$edades, 9, 10)
+```
+
+
+Visualizo la informacion
+```{r, fig.height=10, fig.width=10}
+barchart(values~ind | as.factor(grupos), data=mDHp,
+          scales= list(x= list(rot=90)))
+```
+
+Visualizo la informacion
+```{r, fig.height=10, fig.width=10}
+barchart(values~ind | as.factor(grupos), data=mDMp,
+          scales= list(x= list(rot=90)))
+```
+
+He analizado rápidamente de cada 100 nacidos vivos, según grupo de edad en el Distrito Capital, cuantos de ellos nacen en una parroquia dada. Hemos visto que en mayor aporte en las menores de 20 años se encuentran en la Parroquia Sucre y Antímano, en tanto que los nacidos vivos en madres mayores de 35 se encuentran sobre todo en la parroquia Santa Teresa.
+
+Ahora quiero ver de cada cien niños nacidos vivos en cada parroquia qué porcentaje de niños nacidos aporta cada grupo de edad en cada parroquia
+
+```{r}
+# para obtener los totales de las columnas
+colSums(nacidosVivos[,3:24])
+
+```
+
+Simplemente divido la información del data.frame, de las columnas que me interesan entre el resultado de esta función
+```{r}
+nacen<-round(100*nacidosVivos[,3:24]/colSums(nacidosVivos[,3:24]),2)
+
+# apilo
+nacenV <-stack(nacen)
+# agrego grupos de edad
+nacenV$grupos <-rep(nacidosVivos$edades, 9, 10)
+```
+
+Visualizo
+```{r, fig.height=10, fig.width=10}
+barchart(values~ind | as.factor(grupos), data=nacenV,
+          scales= list(x= list(rot=90)))
+```
+
+Puedo liberar los paneles de forma tal que cada grupo de edad refleje el rango de valores propios y  se puede apreciar mejor la contribución de cada grupo de edad a los nacidos vivos dentro de la parroquia
+
+```{r, fig.height=10, fig.width=10}
+barchart(values~ind | as.factor(grupos), data=nacenV,
+          scales= list(x= list(rot=90), y=list(relation="free")))
+```
+Se considera que los niños nacidos de madres menores de cierta edad están en situación de alto riesgo porque es probable que sufran daños (enfermedad, mortalidad, entre otros). La escala es:
+
+* Alto riesgo: madres menores de 20 años
+* Riesgo intermedio: madres mayores de 34 años
+* Bajo riesgo: madres entre 20 y 34 años
+
+Desde esta perspectiva, en el Distrito Capital, en general el riegos asociados con la edad de la madres al momento de nacer el niño es bajo. No obstante, algunas parroquias tiendens a presentar un riesgo alto, como es el caso de la Parroquia Sucre y la parroquia Antímano; en tanto que la parroquia Santa Teresa presenta un riesgo intermedio. 
+
+Al analizar la situación dentro de cada parroquia, por el número de nacidos vivo y la edad de la madre, la parroquia Sucre presenta un alto riegos.
+
+
+Examino los nacidos vivos según la situación conyugal de las madres en las diferentes parroquias. Se considera que un niño nacido de una mujer sin pareja presenta mayores riesgos que un niño nacido de una madre con pareja.
+
+Examino de cada 100 nacidos vivos cuantos de esos niños están en qué parroquia y cuál es la situación conyugal de la madre
+```{r}
+conyugal <- porcentaje(dinamica3, 3:9, 2)
+conyugalS <-stack(conyugal)
+table(conyugalS$ind)
+conyugalS$parroquia <-rep(dinamica3$parroquia, 22,22)
+
+```
+
+visuali
+```{r, fig.height=10, fig.width=10}
+barchart(values~parroquia | ind, data=conyugalS,
+          scales= list(x= list(rot=90), y=list(relation="free")))
+```
+
+Analizo ahora la defunciones
+
+```{r}
+defunV<-data.frame(parroquia =defunciones[,1],
+                   variacion=variacion1(defunciones$`2012`, defunciones$`2001`))
+```
+
+
+```{r}
+
+barplot(defunV$variacion, names.arg = defunV$parroquia, 
+        las=2)
+```
+
+
+En qué grupos de edades se producen las mayores defunciones
+
+```{r}
+dGrupos<-defuncionesEdades[,2]/colSums(defuncionesEdades[,2])*100
+```
+
+```{r}
+barplot(dGrupos$total, names.arg = defuncionesEdades$edades, 
+        las=2)
+```
+
+Como se observa este comportamiento en las diferentes parroquias
+
+```{r}
+dParroquia <- porcentaje(defuncionesEdades, 3:24, 2)
+dParroquiaS <-stack(dParroquia)
+table(conyugalS$ind)
+dParroquiaS$grupos <-rep(defuncionesEdades$edades, 22,9)
+```
+
+```{r}
+barchart(values~ind | grupos, data=dParroquiaS,
+          scales= list(x= list(rot=90), y=list(relation="free")))
+```
+
+En las defunciones por sexo, quiero ver en qué parroquias mueren más hombres que en mujeres. El indice de masculinidad en las defunciones
+
+```{r}
+a <- seq(2, 25, by=2)
+b<- seq(1,25, by=2)
+b<-b[-1]
+
+def.masc<-masculinidad(defuncionesSexos[,a], defuncionesSexos[,b])
+names(def.masc)<-2001:2012
+defMasc <- stack(def.masc)
+defMasc$parroquia <-rep(defuncionesSexos$parroquia, 22,22)
+
+```
+
+Visualizo
+```{r}
+barchart(values~parroquia | ind, data=defMasc,
+          scales= list(x= list(rot=90)))
+```
+
+Otra perspectiva
+```{r}
+barchart(values~ind | parroquia, data=defMasc,
+          scales= list(x= list(rot=90)))
+```
+
+
+En qué parroquias ocurren las mayores muertes en menores de 5 años
+
+```{r}
+names(muertesCinco)<-c("parroquias", 2001:2012)
+
+mCinco <-100*muertesCinco[, 2:13]/colSums(muertesCinco[, 2:13])
+mCincos <-stack(round(mCinco,2))
+mCincos$parroquias <-rep(muertesCinco$parroquias, 22,22)
+          
+```
+
+```{r}
+barchart(values~ind | parroquias, data=mCincos,
+          scales= list(x= list(rot=90)))
+```
+
+La evolución de los matrimonios por parroquia
+
+```{r}
+
+matrimonios$`2001` <-gsub("-", "NA", matrimonios$`2001`)
+
+matrimonios$`2001` <- as.numeric(matrimonios$`2001`)
+
+casorios <-matrimonios[, 2:13]/colSums(matrimonios[, 2:13])*100
+                                       
+kasorios <-stack(round(casorios,2))
+
+kasorios$parroquias <-rep(matrimonios$parroquias, 22,22)
+          
+```
+
+```{r}
+barchart(values~ind | parroquias, data=kasorios,
+          scales= list(x= list(rot=90)))
+```
+
+Veamos el indice de envejecimiento por parroquia
+
+$$indice\ envejecimiento\ =\frac{\left(personas\ 65\ y\ mas\right)}{personas\ <\ 15}\cdot100$$
+
+En este momento no tenemos el numero de personas menores de 15 años, por tanto, solo graficaremos el porcentaje de personas adultas por parroquia
+
+
+```{r}
+
+lasEdades <-porcentaje(edadesParroquia, 3:24, 2)
+edadS <-stack(lasEdades)
+edadS$grupos <-rep(edadesParroquia$edades, 22, 4)
+
+```
+
+```{r}
+barchart(values~ind | grupos, data=edadS,
+          scales= list(x= list(rot=90)))
+```
+
+No es un gráfico muy interesante pues es obvio que la densidad poblacional nos influye en los resultado. Haré un indice provicional de los mayores de 65 años con respecto a los otros tres grupos de edad
+
+
+```{r}
+
+mayores <-edadesParroquia[4, 3:24]
+noMayores <- colSums(edadesParroquia[1:3, 3:24])
+
+relacion <-mayores/noMayores *100
+
+
+```
+
+
+```{r}
+barplot(as.matrix(relacion), las=2)
+```
+
+numero de hijos por hogar
+```{r}
+
+Hh<-stack(hijosHogar[, 3:24])
+Hh <- Hh[order(Hh$values),]
+dotchart(Hh$values, labels=Hh$ind)
+```
+
+Edad de la madre al tener el primer hijo
+```{r}
+mph <-stack(madrePrimerHijo[, 3:24])
+mph <- mph[order(mph$values),]
+dotchart(mph$values, labels=mph$ind)
+
+```
+
+Edad promedio al morir
+```{r}
+epm <-stack(edadPromedioMuerte[2:3, 3:24])
+epm$sexo <-rep(c("H", "M"), 22, 2)
+epm$color<-ifelse(epm$sexo =="H", "darkgreen", "darkred")
+epm <- epm[order(epm$values),]
+
+
+```
+
+
+```{r, fig.height=10, fig.width=10}
+
+dotchart(epm$values, labels=epm$ind, pch=19, 
+         color=epm$color,
+         groups=factor(epm$sexo))
+```
+

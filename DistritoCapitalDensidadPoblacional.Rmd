@@ -1,0 +1,100 @@
+---
+title: "Distrito Capital. Densidad poblacional"
+author: "Beatriz Valdez"
+date: "30 de septiembre de 2016"
+output:
+        html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+require(readxl)
+```
+
+## Pre-procesamiento de la data
+
+
+```{r, data0, eval=FALSE}
+# Cambio el directorio de trabajo
+setwd("D:/clasesInsumos/clases2016I/dtoCapital/distrito-capital")
+# confirmar mi directorio de trabajo
+getwd()
+
+```
+
+Obtengo la data relacionada con la densidad  poblacional 
+
+```{r data}
+# subo la data densidad
+densidad <- read_excel("d:/clasesInsumos/clases2016I/dtoCapital/Poblacion4.xls",
+                        col_names = FALSE, skip = 11)
+names(densidad) <-c("parroquia", "superficie", "poblacion",
+                            "densidad") 
+
+# elimino las filas 23 en adelante
+densidad <- densidad[1:22,]
+
+```
+
+Crearé una tabla para ver la información que tengo allí. El objetivo, en realidad, es mostrar cómo crear una tabla que pueda emplearse luego en un informe. Si sólo se desea explorar la data, basta con usar, por ejemplo, la función **head()**. Subo el paquete que me permitirá hacer la tabla (es uno de los tantos paquetes con los que se puede hacer una tabla):
+
+```{r paqueteknitr}
+require(knitr)
+
+# verifico el contenido del marco de datos
+head(densidad)
+
+```
+
+Creo la tabla. Voy a emplear la función **as.data.frame()**. Si usted leyó la hoja de cálculo de excel usando el paquete **readxl**, debe usar también esta función, de lo contrario escribe directamente el nombre. Observe que he colocado comentarios para explicar qué significa cada parámetro:
+
+```{r tablaDensidad, results='asis'}
+# transformo el tibble en data.frame
+dcDensidad <- as.data.frame(densidad)
+
+# genero la tabla
+kable(dcDensidad, # el data.frame. Note que lo usare completo
+      digits= 1, # para indicar que deseo 1 decimal
+      row.names= FALSE, # para que no aparezcan numeros como fila
+      col.names = c("Parroquia", "Superficie", 
+                    "Poblacion", "Densidad"), # aprovecho y pongo los nombres de las columnas en mayuscula. Igual los podria cambiar tambien
+      caption ="Distrito Capital segun poblacion y superficie", # para colocar el titulo del grafico
+      format.args = list(decimal.mark = ",", big.mark = ".") # asi, los decimales se separan con coma y  la marca de mil lleva punto
+      )
+
+```
+
+
+Hay un mapa sobre el Distrito Capital según la densidad poblacional de las parroquias. No vale la pena repirlo. Ya está hecho. Podemos, sí, usar un gráfico que nos permitirá explorar el comportamiento de variables como las que nos ofrece esta data. Necesito instalar el paquete portafolio Yo lo tengo. No olvide que la instrucción sería:
+
+**install.packages("portfolio")**
+Subo el paquete al markdown
+
+```{r pportaolio}
+require(portfolio) 
+```
+
+
+Creo la visualización con la función **map.market()**:
+```{r, graficoDensidades}
+map.market(id=rownames(densidad),
+           area = densidad$superficie, # riable que deseo se tome en cuenta para crear el area cuadrada o rectangula
+           group = densidad$parroquia, # variable cuya etiqueta aparecera sobre el rectangulo o cuadrado que se forme
+           color = densidad$densidad, # variable cuyos valores se tomaran para dar color a los rectangulos o cuadrado. Los valores bajos aparecen en color negro y los colores altos en verde claro
+           main = "Distrito Capital. Parroquias segun\n superficie y densidad poblacional")
+
+```
+
+## Interpretación
+
+Si emplearamos este gráfico en un informe, tendríamos que modificar el valor de la escala. No tenemos valores negativos. Por consiguiente, la escala iría de 0 a 61815.
+
++ Las parroquias coloreadas en negro, pero que tienen un rectágulo o un cuadrado grande, tienen poca densidad poblacional, de allí el color negro, pero mucho territorio. Es el caso de Macarao y Junquito
+
++ La Candelaria tiene la porción de territori más pequeña del Distrito Capital y es la más densamente poblada. Si tomamos en cuenta que en esta parroquia o cerca de ella se encuentran muchas oficinas públicas y oficina bancarias, de inmediato entendemos que allí debe de haber altos niveles de contaminación sónica, embotellamientos y producción de desechos sólidos. 
+
+La imagen nos sugiere la áreas hacias las que, idealmente, debería incentivar nuevos urbanismos y zonas de comercio y recreación, eso s las condiciones topográficas lo toleran.
